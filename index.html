@@ -262,8 +262,9 @@ html[data-scene="cassette-shop"]{ --accent:#e0a13a; --glow:#c4453f; }
   border-radius:14px;
   box-shadow:0 10px 30px rgba(0,0,0,.4);
 }
-/* the radio player is horizontally centered and can reach ~380px wide, which overlaps
-   this panel's default bottom-right slot on medium viewports — climb above it there */
+/* the player is horizontally centered and can reach ~430px wide (pill skin) or ~380px
+   (radio skin), which overlaps this panel's default bottom-right slot on medium
+   viewports — climb above it there */
 @media (max-width:1080px){
   .add-panel{ bottom:130px; }
 }
@@ -311,9 +312,11 @@ html[data-scene="cassette-shop"]{ --accent:#e0a13a; --glow:#c4453f; }
 .queue-empty{ opacity:.6; font-size:.78rem; padding:12px; }
 
 /* ============================
-   PLAYER (vintage radio, bottom-center)
-   Visibility is a manual toggle only (#playerToggle) — no auto-hide, unlike the tab bar.
-   Playback is unaffected either way; hiding is purely visual (opacity/transform).
+   PLAYER (two skins toggled via [data-skin] — classic pill + vintage radio)
+   Both skins stay in the DOM together, bound to the same playback controls (matched by
+   .js-* class, not id — see PLAYER ENGINE script) so switching skins never touches
+   playback state. Visibility is a manual toggle only (#playerToggle) — no auto-hide,
+   unlike the tab bar. Playback is unaffected either way; hiding is purely visual.
    ============================ */
 .player{
   position:fixed; left:50%; bottom:24px; z-index:21;
@@ -326,6 +329,57 @@ html[data-scene="cassette-shop"]{ --accent:#e0a13a; --glow:#c4453f; }
   opacity:0;
   pointer-events:none;
 }
+.player[data-skin="pill"] .skin-radio{ display:none; }
+.player[data-skin="radio"] .skin-pill{ display:none; }
+
+.player-skin-toggle{
+  font-size:.68rem; color:rgba(255,255,255,.6);
+  text-decoration:underline; text-underline-offset:2px;
+  background:none; border:none; padding:2px 4px; cursor:pointer;
+}
+.player-skin-toggle:hover{ color:#fff; }
+
+/* shared between both skins' captions — values happen to match, no need to duplicate */
+.np-title{ font-size:.82rem; font-weight:700; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.np-artist{ font-size:.68rem; color:rgba(255,255,255,.55); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.np-time{ font-size:.62rem; color:rgba(255,255,255,.5); }
+
+/* ---- classic pill skin (compact floating pill) ---- */
+.skin-pill{
+  display:flex; align-items:center; gap:12px;
+  width:min(430px, calc(100vw - 48px));
+  padding:10px 16px 10px 10px;
+  border-radius:40px;
+  background:rgba(18,14,10,.62);
+  backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
+  border:1px solid rgba(255,255,255,.08);
+  box-shadow:0 10px 30px rgba(0,0,0,.4);
+}
+.np-thumb{
+  width:44px; height:44px; border-radius:12px; overflow:hidden; flex:0 0 auto;
+  background:rgba(255,255,255,.08);
+}
+.np-thumb img{ width:100%; height:100%; object-fit:cover; }
+.np-body{ flex:1 1 auto; min-width:0; display:flex; flex-direction:column; gap:3px; }
+.np-progress-row{ margin-top:2px; }
+.skin-pill .js-seek{
+  -webkit-appearance:none; appearance:none;
+  display:block; width:100%; height:3px; border-radius:2px;
+  background:rgba(255,255,255,.25);
+  outline:none; cursor:pointer;
+}
+.skin-pill .js-seek::-webkit-slider-thumb{ -webkit-appearance:none; width:9px; height:9px; border-radius:50%; background:#fff; box-shadow:0 0 4px rgba(0,0,0,.4); }
+.skin-pill .js-seek::-moz-range-thumb{ width:9px; height:9px; border-radius:50%; background:#fff; border:none; }
+.skin-pill .js-seek::-moz-range-track{ height:3px; border-radius:2px; background:rgba(255,255,255,.25); }
+.np-transport{ display:flex; align-items:center; gap:2px; flex:0 0 auto; }
+.np-transport button{ width:26px; height:26px; display:flex; align-items:center; justify-content:center; font-size:.8rem; color:#fff; opacity:.85; }
+.np-transport button:hover{ opacity:1; }
+.skin-pill .js-play{
+  width:34px; height:34px; border-radius:50%;
+  background:#fff; color:#241a10; font-size:.85rem;
+}
+
+/* ---- vintage radio skin ---- */
 .radio-frame{
   position:relative;
   width:min(380px, calc(100vw - 32px));
@@ -380,9 +434,9 @@ html[data-scene="cassette-shop"]{ --accent:#e0a13a; --glow:#c4453f; }
 }
 .radio-transport-btn:hover span, .radio-transport-btn:focus-visible span{ background:rgba(45,32,18,.8); border-color:#e8d9b8; outline:none; }
 .radio-transport-btn:active span{ transform:scale(.9); }
-#prevBtn{ left:56%; top:64%; }
-#nextBtn{ left:56%; top:82%; }
-/* progress needle over the dial display — the existing #seekBar range input still does the
+.radio-frame .js-prev{ left:56%; top:64%; }
+.radio-frame .js-next{ left:56%; top:82%; }
+/* progress needle over the dial display — the existing .js-seek range input still does the
    real seeking (dragged/clicked), just made invisible and stretched over the dial's number
    band; this orange line is a pure visual readout of its value */
 .radio-dial-track{ position:absolute; left:55%; right:6%; top:35%; bottom:41%; }
@@ -392,22 +446,20 @@ html[data-scene="cassette-shop"]{ --accent:#e0a13a; --glow:#c4453f; }
   transition:left .4s linear;
   pointer-events:none;
 }
-.radio-dial-track #seekBar{
+.radio-dial-track .js-seek{
   position:absolute; inset:0; width:100%; height:100%; margin:0;
   -webkit-appearance:none; appearance:none;
   background:transparent; opacity:0; cursor:pointer;
 }
-/* thumbnail swatch has no natural slot on the radio artwork — kept in the DOM (JS still
-   sets its src) so nothing needs to change there, just never shown */
-.np-thumb{ display:none; }
 .radio-caption{ max-width:min(380px, calc(100vw - 32px)); text-align:center; }
-.np-title{ font-size:.82rem; font-weight:700; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .np-meta{ display:flex; align-items:center; justify-content:center; gap:8px; margin-top:2px; }
-.np-artist{ font-size:.68rem; color:rgba(255,255,255,.55); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.np-time{ font-size:.62rem; color:rgba(255,255,255,.4); }
 
 @media (max-width:640px){
   .player{ bottom:12px; }
+  .player[data-skin="pill"]{ left:12px; right:12px; width:auto; transform:none; }
+  .player[data-skin="pill"].player-hidden{ transform:translateY(140%); }
+  .skin-pill{ align-self:stretch; width:auto; padding:8px 12px 8px 8px; gap:8px; }
+  .np-thumb{ width:36px; height:36px; border-radius:10px; }
   .radio-frame{ width:calc(100vw - 24px); }
   .np-title{ font-size:.76rem; }
   .np-artist{ font-size:.62rem; }
@@ -527,30 +579,54 @@ html[data-scene="cassette-shop"]{ --accent:#e0a13a; --glow:#c4453f; }
   <ul id="queueList"></ul>
 </aside>
 
-<!-- PERSISTENT PLAYER (vintage radio) -->
-<footer class="player" id="player">
-  <div class="radio-frame">
+<!-- PERSISTENT PLAYER — two interchangeable skins bound to the same playback state.
+     Default skin is the classic pill; #skinToggle below swaps to the radio and persists
+     the choice in localStorage (see SCENES script section). -->
+<footer class="player" id="player" data-skin="pill">
+
+  <!-- CLASSIC SKIN (compact floating pill) -->
+  <div class="skin-pill">
+    <div class="np-thumb"><img class="js-thumb" alt="" style="display:none;"></div>
+    <div class="np-body">
+      <div class="np-title js-title">Tap play to start the tape ▶</div>
+      <div class="np-artist js-artist">—</div>
+      <div class="np-progress-row">
+        <input type="range" class="js-seek" min="0" max="100" value="0" aria-label="Seek">
+      </div>
+      <div class="np-time"><span class="js-elapsed">0:00</span> / <span class="js-duration">0:00</span></div>
+    </div>
+    <div class="np-transport">
+      <button class="js-prev" aria-label="Previous">⏮</button>
+      <button class="js-play" aria-label="Play/Pause" aria-pressed="false">▶</button>
+      <button class="js-next" aria-label="Next">⏭</button>
+      <button class="js-mute" aria-label="Mute" aria-pressed="false">🔊</button>
+    </div>
+  </div>
+
+  <!-- RADIO SKIN (vintage radio artwork) -->
+  <div class="radio-frame skin-radio">
     <img class="radio-img" src="images/radio.png" alt="Vintage radio player" draggable="false">
-    <div class="np-thumb"><img id="trackThumb" alt="" style="display:none;"></div>
 
     <div class="radio-dial-track">
       <div class="radio-needle" id="radioNeedle"></div>
-      <input type="range" id="seekBar" min="0" max="100" value="0" aria-label="Seek">
+      <input type="range" class="js-seek" min="0" max="100" value="0" aria-label="Seek">
     </div>
 
-    <button id="prevBtn" class="radio-transport-btn" aria-label="Previous"><span>⏮</span></button>
-    <button id="nextBtn" class="radio-transport-btn" aria-label="Next"><span>⏭</span></button>
+    <button class="js-prev radio-transport-btn" aria-label="Previous"><span>⏮</span></button>
+    <button class="js-next radio-transport-btn" aria-label="Next"><span>⏭</span></button>
 
-    <button id="playBtn" class="radio-hit radio-hit-tuning" aria-label="Play/Pause" aria-pressed="false">▶</button>
-    <button id="muteBtn" class="radio-hit radio-hit-volume" aria-label="Mute" aria-pressed="false">🔊</button>
+    <button class="js-play radio-hit radio-hit-tuning" aria-label="Play/Pause" aria-pressed="false">▶</button>
+    <button class="js-mute radio-hit radio-hit-volume" aria-label="Mute" aria-pressed="false">🔊</button>
   </div>
-  <div class="radio-caption">
-    <div class="np-title" id="trackTitle">Tap play to start the tape ▶</div>
+  <div class="radio-caption skin-radio">
+    <div class="np-title js-title">Tap play to start the tape ▶</div>
     <div class="np-meta">
-      <span class="np-artist" id="trackArtist">—</span>
-      <span class="np-time"><span id="elapsed">0:00</span> / <span id="duration">0:00</span></span>
+      <span class="np-artist js-artist">—</span>
+      <span class="np-time"><span class="js-elapsed">0:00</span> / <span class="js-duration">0:00</span></span>
     </div>
   </div>
+
+  <button id="skinToggle" class="player-skin-toggle" type="button">Switch to radio view</button>
 </footer>
 
 <div id="ytPlayerHidden" style="position:absolute;width:0;height:0;overflow:hidden;"></div>
@@ -650,13 +726,30 @@ tabToggleBtn.addEventListener('click', () => {
 });
 showTabbar();
 
-// radio player: manual show/hide only — no auto-hide timer. Hiding is purely visual,
+// player: manual show/hide only — no auto-hide timer. Hiding is purely visual,
 // playback (and the toggle button itself) is unaffected either way.
 const playerEl = document.getElementById('player');
 const playerToggleBtn = document.getElementById('playerToggle');
 playerToggleBtn.addEventListener('click', () => {
   const hidden = playerEl.classList.toggle('player-hidden');
   playerToggleBtn.textContent = hidden ? '▴' : '▾';
+});
+
+// player skin: classic pill (default) vs vintage radio — a pure visual swap, both skins
+// stay bound to the same playback controls (see PLAYER ENGINE section). Choice persists
+// across visits via localStorage.
+const SKIN_STORAGE_KEY = 'yaadonRadio.playerSkin.v1';
+const skinToggleBtn = document.getElementById('skinToggle');
+function applySkin(skin){
+  playerEl.dataset.skin = skin;
+  skinToggleBtn.textContent = skin === 'radio' ? 'Switch to classic player' : 'Switch to radio view';
+}
+let currentSkin = localStorage.getItem(SKIN_STORAGE_KEY) === 'radio' ? 'radio' : 'pill';
+applySkin(currentSkin);
+skinToggleBtn.addEventListener('click', () => {
+  currentSkin = currentSkin === 'radio' ? 'pill' : 'radio';
+  applySkin(currentSkin);
+  try{ localStorage.setItem(SKIN_STORAGE_KEY, currentSkin); }catch(e){ /* storage full/blocked: skin just won't persist */ }
 });
 
 // optional muted-by-default transition blip, synthesized (no audio file needed)
@@ -706,17 +799,20 @@ if(CONFIG.DEFAULT_VIDEO_IDS.length){
 // ============================
 // PLAYER ENGINE (hidden YouTube IFrame API, custom UI)
 // ============================
-const trackTitleEl = document.getElementById('trackTitle');
-const trackArtistEl = document.getElementById('trackArtist');
-const trackThumbEl = document.getElementById('trackThumb');
-const elapsedEl = document.getElementById('elapsed');
-const durationEl = document.getElementById('duration');
-const seekBar = document.getElementById('seekBar');
-const playBtn = document.getElementById('playBtn');
-const muteBtn = document.getElementById('muteBtn');
-const prevBtn = document.getElementById('prevBtn');
-const nextBtn = document.getElementById('nextBtn');
+// both player skins stay in the DOM together; controls are matched pairs (one per skin)
+// selected by class and driven in lockstep so switching skins never touches playback state
+const trackTitleEls = document.querySelectorAll('.js-title');
+const trackArtistEls = document.querySelectorAll('.js-artist');
+const trackThumbEls = document.querySelectorAll('.js-thumb');
+const elapsedEls = document.querySelectorAll('.js-elapsed');
+const durationEls = document.querySelectorAll('.js-duration');
+const seekBars = document.querySelectorAll('.js-seek');
+const playBtns = document.querySelectorAll('.js-play');
+const muteBtns = document.querySelectorAll('.js-mute');
+const prevBtns = document.querySelectorAll('.js-prev');
+const nextBtns = document.querySelectorAll('.js-next');
 const radioNeedle = document.getElementById('radioNeedle');
+function setText(els, text){ els.forEach(el => el.textContent = text); }
 function setNeedle(pct){ radioNeedle.style.left = pct + '%'; }
 const vibingCountEl = document.getElementById('vibingCount');
 const queueToggleBtn = document.getElementById('queueToggle');
@@ -744,8 +840,8 @@ window.onYouTubeIframeAPIReady = function(){
 };
 setTimeout(() => {
   if(!apiReady){
-    trackTitleEl.textContent = "Couldn't load the tape deck — check your connection 📼";
-    trackArtistEl.textContent = '';
+    setText(trackTitleEls, "Couldn't load the tape deck — check your connection 📼");
+    setText(trackArtistEls, '');
   }
 }, 7000);
 
@@ -759,8 +855,8 @@ function createPlayer(){
   } else if(CONFIG.FALLBACK_VIDEO_IDS.length){
     vars.videoId = CONFIG.FALLBACK_VIDEO_IDS[0];
   } else {
-    trackTitleEl.textContent = 'No playlist configured yet — set CONFIG.DEFAULT_VIDEO_IDS';
-    trackArtistEl.textContent = '';
+    setText(trackTitleEls, 'No playlist configured yet — set CONFIG.DEFAULT_VIDEO_IDS');
+    setText(trackArtistEls, '');
     return;
   }
   player = new YT.Player('ytPlayerHidden', {
@@ -780,12 +876,26 @@ function onPlayerError(){
     fallbackIndex++;
     player.loadVideoById(CONFIG.FALLBACK_VIDEO_IDS[fallbackIndex]);
   } else {
-    trackTitleEl.textContent = 'This tape got stuck — try refreshing 📼';
+    setText(trackTitleEls, 'This tape got stuck — try refreshing 📼');
   }
 }
+function updatePlayUI(){
+  playBtns.forEach(btn => {
+    btn.textContent = isPlaying ? '⏸' : '▶';
+    btn.classList.toggle('is-playing', isPlaying);
+    btn.setAttribute('aria-pressed', String(isPlaying));
+  });
+}
+function updateMuteUI(){
+  muteBtns.forEach(btn => {
+    btn.textContent = isMuted ? '🔇' : '🔊';
+    btn.classList.toggle('is-muted', isMuted);
+    btn.setAttribute('aria-pressed', String(isMuted));
+  });
+}
 function onPlayerStateChange(e){
-  if(e.data === YT.PlayerState.PLAYING){ isPlaying = true; playBtn.textContent = '⏸'; playBtn.classList.add('is-playing'); playBtn.setAttribute('aria-pressed', 'true'); updateNowPlaying(); }
-  else if(e.data === YT.PlayerState.PAUSED){ isPlaying = false; playBtn.textContent = '▶'; playBtn.classList.remove('is-playing'); playBtn.setAttribute('aria-pressed', 'false'); }
+  if(e.data === YT.PlayerState.PLAYING){ isPlaying = true; updatePlayUI(); updateNowPlaying(); }
+  else if(e.data === YT.PlayerState.PAUSED){ isPlaying = false; updatePlayUI(); }
   else if(e.data === YT.PlayerState.CUED){ updateNowPlaying(); }
   else if(e.data === YT.PlayerState.ENDED){ advanceQueue(); }
 }
@@ -814,24 +924,23 @@ function prevTrack(){
   queueIndex = (queueIndex - 1 + queue.length) % queue.length;
   loadQueueItem(queueIndex);
 }
-
-playBtn.addEventListener('click', () => {
+function togglePlayPause(){
   if(!player) return;
   const state = player.getPlayerState();
   if(state === YT.PlayerState.PLAYING) player.pauseVideo();
   else player.playVideo();
-});
-nextBtn.addEventListener('click', nextTrack);
-prevBtn.addEventListener('click', prevTrack);
-
-muteBtn.addEventListener('click', () => {
+}
+function toggleMute(){
   if(!player) return;
   isMuted = !isMuted;
   if(isMuted) player.mute(); else player.unMute();
-  muteBtn.classList.toggle('is-muted', isMuted);
-  muteBtn.setAttribute('aria-pressed', String(isMuted));
-  muteBtn.textContent = isMuted ? '🔇' : '🔊';
-});
+  updateMuteUI();
+}
+
+playBtns.forEach(btn => btn.addEventListener('click', togglePlayPause));
+nextBtns.forEach(btn => btn.addEventListener('click', nextTrack));
+prevBtns.forEach(btn => btn.addEventListener('click', prevTrack));
+muteBtns.forEach(btn => btn.addEventListener('click', toggleMute));
 
 function fmtTime(s){
   s = Math.max(0, Math.floor(s || 0));
@@ -843,22 +952,28 @@ setInterval(() => {
   if(!player || !isPlaying || typeof player.getCurrentTime !== 'function') return;
   const cur = player.getCurrentTime() || 0;
   const dur = player.getDuration() || 0;
-  elapsedEl.textContent = fmtTime(cur);
-  durationEl.textContent = fmtTime(dur);
+  setText(elapsedEls, fmtTime(cur));
+  setText(durationEls, fmtTime(dur));
   if(dur > 0 && !seeking){
     const pct = (cur / dur) * 100;
-    seekBar.value = pct;
+    seekBars.forEach(bar => { bar.value = pct; });
     setNeedle(pct);
   }
 }, 500);
 
-seekBar.addEventListener('input', () => { seeking = true; setNeedle(seekBar.value); });
-seekBar.addEventListener('change', () => {
-  if(player && typeof player.getDuration === 'function'){
-    const dur = player.getDuration() || 0;
-    player.seekTo((seekBar.value / 100) * dur, true);
-  }
-  seeking = false;
+seekBars.forEach(bar => {
+  bar.addEventListener('input', () => {
+    seeking = true;
+    seekBars.forEach(b => { if(b !== bar) b.value = bar.value; });
+    setNeedle(bar.value);
+  });
+  bar.addEventListener('change', () => {
+    if(player && typeof player.getDuration === 'function'){
+      const dur = player.getDuration() || 0;
+      player.seekTo((bar.value / 100) * dur, true);
+    }
+    seeking = false;
+  });
 });
 
 function fetchOembed(id){
@@ -873,14 +988,13 @@ function updateNowPlaying(){
   try{ id = player.getVideoData().video_id; }catch(e){ id = null; }
   if(!id || id === lastVideoId) return;
   lastVideoId = id;
-  trackTitleEl.textContent = 'Loading the cassette…'; // TODO: verify Hindi copy — कैसेट लोड हो रहा है…
-  trackArtistEl.textContent = '—';
-  trackThumbEl.src = `https://img.youtube.com/vi/${id}/mqdefault.jpg`;
-  trackThumbEl.style.display = 'block';
+  setText(trackTitleEls, 'Loading the cassette…'); // TODO: verify Hindi copy — कैसेट लोड हो रहा है…
+  setText(trackArtistEls, '—');
+  trackThumbEls.forEach(el => { el.src = `https://img.youtube.com/vi/${id}/mqdefault.jpg`; el.style.display = 'block'; });
   fetchOembed(id).then(d => {
     if(!d || id !== lastVideoId) return;
-    trackTitleEl.textContent = d.title || 'Unknown Track';
-    trackArtistEl.textContent = d.author_name || '—';
+    setText(trackTitleEls, d.title || 'Unknown Track');
+    setText(trackArtistEls, d.author_name || '—');
   });
   renderQueue();
 }
@@ -925,7 +1039,7 @@ document.addEventListener('keydown', (e) => {
   if(tag === 'input' || tag === 'textarea') return;
   if(!player) return;
   switch(e.code){
-    case 'Space': e.preventDefault(); playBtn.click(); break;
+    case 'Space': e.preventDefault(); togglePlayPause(); break;
     case 'ArrowRight': player.seekTo((player.getCurrentTime() || 0) + 5, true); break;
     case 'ArrowLeft': player.seekTo(Math.max(0, (player.getCurrentTime() || 0) - 5), true); break;
     case 'KeyN': nextTrack(); break;
