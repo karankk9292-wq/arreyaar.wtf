@@ -43,6 +43,8 @@ html[data-scene="chai"]       { --accent:#f2d9a8; --glow:#e0913a; }
 html[data-scene="dhaba"]      { --accent:#ff8c42; --glow:#ff6a1f; }
 html[data-scene="laundry"]    { --accent:#e8d4b0; --glow:#c9b896; }
 html[data-scene="truck-driver"]{ --accent:#f2e2b8; --glow:#3fa3a3; }
+html[data-scene="tailor"]     { --accent:#d9c08a; --glow:#a35b5b; }
+html[data-scene="cassette-shop"]{ --accent:#e0a13a; --glow:#c4453f; }
 
 /* ============================
    TAB BAR (hideable — see SCENES script section for auto-hide logic)
@@ -232,6 +234,23 @@ html[data-scene="truck-driver"]{ --accent:#f2e2b8; --glow:#3fa3a3; }
   background-position:center;
 }
 
+/* ---- 7. TAILOR (photo scene) ---- */
+[data-scene-id="tailor"] .scene-bg{
+  background-image:url('images/tailor.jpg');
+  background-size:cover;
+  background-position:center;
+}
+
+/* ---- 8. CASSETTE SHOP (photo scene) ----
+   cover, like every other scene — full-bleed coverage wins over cropping the edge posters.
+   position biased to 30% vertical (not 50%) so any top/bottom crop on ultra-wide viewports
+   eats into the dog/rickshaw at the bottom before it eats into the SA RE GA MA signage. */
+[data-scene-id="cassette-shop"] .scene-bg{
+  background-image:url('images/cassette-shop.jpg');
+  background-size:cover;
+  background-position:center 30%;
+}
+
 /* ============================
    ADD-YOUR-PLAYLIST PANEL
    ============================ */
@@ -243,7 +262,7 @@ html[data-scene="truck-driver"]{ --accent:#f2e2b8; --glow:#3fa3a3; }
   border-radius:14px;
   box-shadow:0 10px 30px rgba(0,0,0,.4);
 }
-/* the player pill is horizontally centered and can reach ~430px wide, which overlaps
+/* the radio player is horizontally centered and can reach ~380px wide, which overlaps
    this panel's default bottom-right slot on medium viewports — climb above it there */
 @media (max-width:1080px){
   .add-panel{ bottom:130px; }
@@ -292,21 +311,14 @@ html[data-scene="truck-driver"]{ --accent:#f2e2b8; --glow:#3fa3a3; }
 .queue-empty{ opacity:.6; font-size:.78rem; padding:12px; }
 
 /* ============================
-   PLAYER (compact floating pill, bottom-center)
+   PLAYER (vintage radio, bottom-center)
    Visibility is a manual toggle only (#playerToggle) — no auto-hide, unlike the tab bar.
    Playback is unaffected either way; hiding is purely visual (opacity/transform).
    ============================ */
 .player{
   position:fixed; left:50%; bottom:24px; z-index:21;
   transform:translateX(-50%);
-  display:flex; align-items:center; gap:12px;
-  width:min(430px, calc(100vw - 48px));
-  padding:10px 16px 10px 10px;
-  border-radius:40px;
-  background:rgba(18,14,10,.62);
-  backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
-  border:1px solid rgba(255,255,255,.08);
-  box-shadow:0 10px 30px rgba(0,0,0,.4);
+  display:flex; flex-direction:column; align-items:center; gap:6px;
   transition:transform .3s ease, opacity .3s ease;
 }
 .player.player-hidden{
@@ -314,37 +326,89 @@ html[data-scene="truck-driver"]{ --accent:#f2e2b8; --glow:#3fa3a3; }
   opacity:0;
   pointer-events:none;
 }
-.np-thumb{
-  width:44px; height:44px; border-radius:12px; overflow:hidden; flex:0 0 auto;
-  background:rgba(255,255,255,.08);
+.radio-frame{
+  position:relative;
+  width:min(380px, calc(100vw - 32px));
+  aspect-ratio:900/507;
+  filter:drop-shadow(0 12px 26px rgba(0,0,0,.5));
 }
-.np-thumb img{ width:100%; height:100%; object-fit:cover; }
-.np-body{ flex:1 1 auto; min-width:0; display:flex; flex-direction:column; gap:3px; }
-.np-title{ font-size:.82rem; font-weight:700; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.np-artist{ font-size:.68rem; color:rgba(255,255,255,.55); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.np-progress-row{ margin-top:2px; }
-#seekBar{
+.radio-img{
+  position:absolute; inset:0; width:100%; height:100%;
+  pointer-events:none; user-select:none; -webkit-user-drag:none;
+}
+/* transparent hit areas layered over the artwork — sized to a min. 44px touch target
+   via max(), independent of the (smaller) visible knob graphic underneath */
+.radio-hit{
+  position:absolute; z-index:2;
+  border:none; background:transparent; border-radius:50%; padding:0; cursor:pointer;
+  transform:translate(-50%,-50%);
+  transition:background .2s ease, box-shadow .2s ease, transform .35s ease;
+  font-size:0; line-height:0; color:transparent;
+}
+.radio-hit:hover, .radio-hit:focus-visible{
+  background:radial-gradient(circle, rgba(255,225,160,.45), transparent 68%);
+  box-shadow:0 0 18px 4px rgba(255,190,110,.55);
+  outline:none;
+}
+/* play/pause — the TUNING knob (right). Rotates a little further "into the turn" while playing. */
+.radio-hit-tuning{
+  left:81.5%; top:76%; width:max(44px, 14%); aspect-ratio:1;
+  transform:translate(-50%,-50%) rotate(0deg);
+}
+.radio-hit-tuning.is-playing{ transform:translate(-50%,-50%) rotate(32deg); }
+/* mute — the VOLUME knob (left). Rotates toward OFF/MAX to match the printed dial labels. */
+.radio-hit-volume{
+  left:64%; top:76.5%; width:max(44px, 10%); aspect-ratio:1;
+  transform:translate(-50%,-50%) rotate(20deg);
+}
+.radio-hit-volume.is-muted{ transform:translate(-50%,-50%) rotate(-45deg); }
+/* next/prev — no natural control on the artwork for these, so they're tucked as tiny stacked
+   tick buttons in the sliver of blank panel between the grille and the dial/volume knob (pixel-
+   sampled: roughly x 490-536 of 900, clear of both the dial's bottom edge and the VOLUME text) */
+.radio-transport-btn{
+  position:absolute; z-index:2;
+  width:44px; height:44px;
+  transform:translate(-50%,-50%);
+  display:flex; align-items:center; justify-content:center;
+  background:transparent; border:none; cursor:pointer;
+}
+.radio-transport-btn span{
+  display:inline-flex; align-items:center; justify-content:center;
+  width:15px; height:15px; border-radius:3px; font-size:8px; line-height:1; color:#e8d9b8;
+  background:rgba(20,15,10,.55); border:1px solid rgba(230,210,170,.5);
+  transition:background .2s ease, border-color .2s ease, transform .15s ease;
+}
+.radio-transport-btn:hover span, .radio-transport-btn:focus-visible span{ background:rgba(45,32,18,.8); border-color:#e8d9b8; outline:none; }
+.radio-transport-btn:active span{ transform:scale(.9); }
+#prevBtn{ left:56%; top:64%; }
+#nextBtn{ left:56%; top:82%; }
+/* progress needle over the dial display — the existing #seekBar range input still does the
+   real seeking (dragged/clicked), just made invisible and stretched over the dial's number
+   band; this orange line is a pure visual readout of its value */
+.radio-dial-track{ position:absolute; left:55%; right:6%; top:35%; bottom:41%; }
+.radio-needle{
+  position:absolute; top:0; bottom:0; left:0%; width:2px; margin-left:-1px;
+  background:#ff7a33; box-shadow:0 0 4px rgba(255,122,51,.8);
+  transition:left .4s linear;
+  pointer-events:none;
+}
+.radio-dial-track #seekBar{
+  position:absolute; inset:0; width:100%; height:100%; margin:0;
   -webkit-appearance:none; appearance:none;
-  display:block; width:100%; height:3px; border-radius:2px;
-  background:rgba(255,255,255,.25);
-  outline:none; cursor:pointer;
+  background:transparent; opacity:0; cursor:pointer;
 }
-#seekBar::-webkit-slider-thumb{ -webkit-appearance:none; width:9px; height:9px; border-radius:50%; background:#fff; box-shadow:0 0 4px rgba(0,0,0,.4); }
-#seekBar::-moz-range-thumb{ width:9px; height:9px; border-radius:50%; background:#fff; border:none; }
-#seekBar::-moz-range-track{ height:3px; border-radius:2px; background:rgba(255,255,255,.25); }
-.np-time{ font-size:.62rem; color:rgba(255,255,255,.5); margin-top:2px; }
-.np-transport{ display:flex; align-items:center; gap:2px; flex:0 0 auto; }
-.np-transport button{ width:26px; height:26px; display:flex; align-items:center; justify-content:center; font-size:.8rem; color:#fff; opacity:.85; }
-.np-transport button:hover{ opacity:1; }
-#playBtn{
-  width:34px; height:34px; border-radius:50%;
-  background:#fff; color:#241a10; font-size:.85rem;
-}
+/* thumbnail swatch has no natural slot on the radio artwork — kept in the DOM (JS still
+   sets its src) so nothing needs to change there, just never shown */
+.np-thumb{ display:none; }
+.radio-caption{ max-width:min(380px, calc(100vw - 32px)); text-align:center; }
+.np-title{ font-size:.82rem; font-weight:700; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.np-meta{ display:flex; align-items:center; justify-content:center; gap:8px; margin-top:2px; }
+.np-artist{ font-size:.68rem; color:rgba(255,255,255,.55); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.np-time{ font-size:.62rem; color:rgba(255,255,255,.4); }
 
 @media (max-width:640px){
-  .player{ left:12px; right:12px; width:auto; bottom:12px; transform:none; padding:8px 12px 8px 8px; gap:8px; }
-  .player.player-hidden{ transform:translateY(140%); }
-  .np-thumb{ width:36px; height:36px; border-radius:10px; }
+  .player{ bottom:12px; }
+  .radio-frame{ width:calc(100vw - 24px); }
   .np-title{ font-size:.76rem; }
   .np-artist{ font-size:.62rem; }
   .add-panel{ right:8px; left:8px; width:auto; bottom:130px; }
@@ -380,6 +444,8 @@ html[data-scene="truck-driver"]{ --accent:#f2e2b8; --glow:#3fa3a3; }
   <button class="tab-btn font-display" data-scene="dhaba">Dhaba <small>ढाबा</small></button>
   <button class="tab-btn font-display" data-scene="laundry">Laundry <small>लॉन्ड्री</small></button>
   <button class="tab-btn font-display" data-scene="truck-driver">Truck Driver <small>ट्रक ड्राइवर</small></button>
+  <button class="tab-btn font-display" data-scene="tailor">Tailor <small>टेलर</small></button>
+  <button class="tab-btn font-display" data-scene="cassette-shop">Cassette Shop <small>कैसेट की दुकान</small></button>
 </header>
 
 <main class="scenes">
@@ -426,6 +492,18 @@ html[data-scene="truck-driver"]{ --accent:#f2e2b8; --glow:#3fa3a3; }
     <div class="photo-overlay"></div>
   </section>
 
+  <!-- 7. TAILOR (photo scene) -->
+  <section class="scene" data-scene="tailor" data-scene-id="tailor">
+    <div class="scene-bg"></div>
+    <div class="photo-overlay"></div>
+  </section>
+
+  <!-- 8. CASSETTE SHOP (photo scene) -->
+  <section class="scene" data-scene="cassette-shop" data-scene-id="cassette-shop">
+    <div class="scene-bg"></div>
+    <div class="photo-overlay"></div>
+  </section>
+
 </main>
 
 <!-- ADD-YOUR-PLAYLIST PANEL -->
@@ -449,21 +527,29 @@ html[data-scene="truck-driver"]{ --accent:#f2e2b8; --glow:#3fa3a3; }
   <ul id="queueList"></ul>
 </aside>
 
-<!-- PERSISTENT PLAYER (compact floating pill) -->
+<!-- PERSISTENT PLAYER (vintage radio) -->
 <footer class="player" id="player">
-  <div class="np-thumb"><img id="trackThumb" alt="" style="display:none;"></div>
-  <div class="np-body">
-    <div class="np-title" id="trackTitle">Tap play to start the tape ▶</div>
-    <div class="np-artist" id="trackArtist">—</div>
-    <div class="np-progress-row">
-      <input type="range" id="seekBar" min="0" max="100" value="0">
+  <div class="radio-frame">
+    <img class="radio-img" src="images/radio.png" alt="Vintage radio player" draggable="false">
+    <div class="np-thumb"><img id="trackThumb" alt="" style="display:none;"></div>
+
+    <div class="radio-dial-track">
+      <div class="radio-needle" id="radioNeedle"></div>
+      <input type="range" id="seekBar" min="0" max="100" value="0" aria-label="Seek">
     </div>
-    <div class="np-time"><span id="elapsed">0:00</span> / <span id="duration">0:00</span></div>
+
+    <button id="prevBtn" class="radio-transport-btn" aria-label="Previous"><span>⏮</span></button>
+    <button id="nextBtn" class="radio-transport-btn" aria-label="Next"><span>⏭</span></button>
+
+    <button id="playBtn" class="radio-hit radio-hit-tuning" aria-label="Play/Pause" aria-pressed="false">▶</button>
+    <button id="muteBtn" class="radio-hit radio-hit-volume" aria-label="Mute" aria-pressed="false">🔊</button>
   </div>
-  <div class="np-transport">
-    <button id="prevBtn" aria-label="Previous">⏮</button>
-    <button id="playBtn" aria-label="Play/Pause">▶</button>
-    <button id="nextBtn" aria-label="Next">⏭</button>
+  <div class="radio-caption">
+    <div class="np-title" id="trackTitle">Tap play to start the tape ▶</div>
+    <div class="np-meta">
+      <span class="np-artist" id="trackArtist">—</span>
+      <span class="np-time"><span id="elapsed">0:00</span> / <span id="duration">0:00</span></span>
+    </div>
   </div>
 </footer>
 
@@ -564,7 +650,7 @@ tabToggleBtn.addEventListener('click', () => {
 });
 showTabbar();
 
-// player pill: manual show/hide only — no auto-hide timer. Hiding is purely visual,
+// radio player: manual show/hide only — no auto-hide timer. Hiding is purely visual,
 // playback (and the toggle button itself) is unaffected either way.
 const playerEl = document.getElementById('player');
 const playerToggleBtn = document.getElementById('playerToggle');
@@ -627,8 +713,11 @@ const elapsedEl = document.getElementById('elapsed');
 const durationEl = document.getElementById('duration');
 const seekBar = document.getElementById('seekBar');
 const playBtn = document.getElementById('playBtn');
+const muteBtn = document.getElementById('muteBtn');
 const prevBtn = document.getElementById('prevBtn');
 const nextBtn = document.getElementById('nextBtn');
+const radioNeedle = document.getElementById('radioNeedle');
+function setNeedle(pct){ radioNeedle.style.left = pct + '%'; }
 const vibingCountEl = document.getElementById('vibingCount');
 const queueToggleBtn = document.getElementById('queueToggle');
 const queueDrawer = document.getElementById('queueDrawer');
@@ -638,6 +727,7 @@ const queueListEl = document.getElementById('queueList');
 let player = null;
 let apiReady = false;
 let isPlaying = false;
+let isMuted = false;
 let seeking = false;
 let lastVideoId = null;
 let fallbackIndex = 0;
@@ -694,8 +784,8 @@ function onPlayerError(){
   }
 }
 function onPlayerStateChange(e){
-  if(e.data === YT.PlayerState.PLAYING){ isPlaying = true; playBtn.textContent = '⏸'; updateNowPlaying(); }
-  else if(e.data === YT.PlayerState.PAUSED){ isPlaying = false; playBtn.textContent = '▶'; }
+  if(e.data === YT.PlayerState.PLAYING){ isPlaying = true; playBtn.textContent = '⏸'; playBtn.classList.add('is-playing'); playBtn.setAttribute('aria-pressed', 'true'); updateNowPlaying(); }
+  else if(e.data === YT.PlayerState.PAUSED){ isPlaying = false; playBtn.textContent = '▶'; playBtn.classList.remove('is-playing'); playBtn.setAttribute('aria-pressed', 'false'); }
   else if(e.data === YT.PlayerState.CUED){ updateNowPlaying(); }
   else if(e.data === YT.PlayerState.ENDED){ advanceQueue(); }
 }
@@ -734,6 +824,15 @@ playBtn.addEventListener('click', () => {
 nextBtn.addEventListener('click', nextTrack);
 prevBtn.addEventListener('click', prevTrack);
 
+muteBtn.addEventListener('click', () => {
+  if(!player) return;
+  isMuted = !isMuted;
+  if(isMuted) player.mute(); else player.unMute();
+  muteBtn.classList.toggle('is-muted', isMuted);
+  muteBtn.setAttribute('aria-pressed', String(isMuted));
+  muteBtn.textContent = isMuted ? '🔇' : '🔊';
+});
+
 function fmtTime(s){
   s = Math.max(0, Math.floor(s || 0));
   const m = Math.floor(s / 60);
@@ -749,11 +848,11 @@ setInterval(() => {
   if(dur > 0 && !seeking){
     const pct = (cur / dur) * 100;
     seekBar.value = pct;
-    seekBar.style.background = `linear-gradient(to right, #fff ${pct}%, rgba(255,255,255,.25) ${pct}%)`;
+    setNeedle(pct);
   }
 }, 500);
 
-seekBar.addEventListener('input', () => { seeking = true; });
+seekBar.addEventListener('input', () => { seeking = true; setNeedle(seekBar.value); });
 seekBar.addEventListener('change', () => {
   if(player && typeof player.getDuration === 'function'){
     const dur = player.getDuration() || 0;
