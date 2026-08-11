@@ -868,10 +868,25 @@ function createPlayer(){
 function onPlayerReady(){
   tickVibing();
 }
-function onPlayerError(){
+// YouTube IFrame API error codes: see https://developers.google.com/youtube/iframe_api_reference#onError
+const PLAYER_ERROR_REASONS = {
+  2: 'invalid video ID',
+  5: "can't play in this browser",
+  100: 'video not found or removed',
+  101: 'embedding disabled by the uploader',
+  150: 'embedding disabled by the uploader',
+};
+function onPlayerError(e){
+  const code = e && e.data;
+  const reason = PLAYER_ERROR_REASONS[code] || `unknown error ${code}`;
+  const failedItem = queue[queueIndex];
+  console.error(`[player] track failed to load (${reason}) — skipping`, failedItem);
   if(queue.length){
-    // a specific track in the queue is unavailable (deleted/private/restricted) — skip it
-    advanceQueue();
+    // a specific track in the queue is unavailable (deleted/private/restricted) — skip it,
+    // but say so on screen first instead of silently jumping to the next track
+    setText(trackTitleEls, `⚠ Can't play this track (${reason}) — skipping…`);
+    setText(trackArtistEls, '—');
+    setTimeout(advanceQueue, 1400);
   } else if(CONFIG.FALLBACK_VIDEO_IDS.length > fallbackIndex + 1){
     fallbackIndex++;
     player.loadVideoById(CONFIG.FALLBACK_VIDEO_IDS[fallbackIndex]);
